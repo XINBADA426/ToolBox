@@ -5,6 +5,7 @@
 # @Last Modified by:   MingJia
 # @Last Modified time: 2020-04-17 14:15:17
 import logging
+import re
 
 import click
 from prettytable import PrettyTable
@@ -37,7 +38,7 @@ def cli(input, sep):
     while True and i <= 1000:
         line = input.readline()
         if line:
-            arr = line.strip().split(sep)
+            arr = re.split(sep, line.strip())
             if i == 0:
                 res.field_names = arr
             else:
