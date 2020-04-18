@@ -44,6 +44,7 @@ def cli(fastq, out):
         logging.info(f'Start to parse {fastq}')
         for record in SeqIO.parse(gzip.open(fastq, 'rt'), 'fastq'):
             record.id = str(number)
+            record.description = record.id
             SeqIO.write(record, OUT, 'fastq')
             number += 1
     logging.info('Finish rename the fq id')
