@@ -4,6 +4,7 @@
 # @Date:   2020-03-25 16:07:43
 # @Last Modified by:   MingJia
 # @Last Modified time: 2020-03-25 16:26:02
+import gzip
 import logging
 
 import click
@@ -44,20 +45,19 @@ def cli(input, feature, name_tag, output):
 
     """
     with open(output, 'w') as OUT:
-        for chromosome in SeqIO.parse(open(input), "genbank"):
+        logging.info(f'Start to parse genbank file: {input}')
+        handle = gzip.open(input, 'rt') if input.endswith('gz') else open(input, 'r')
+        for chromosome in SeqIO.parse(handle, "genbank"):
             for record in chromosome.features:
                 if record.type == feature:
                     start = record.location.start.position
                     end = record.location.end.position
-                    try:
+                    if name_tag in record.qualifiers:
                         name = record.qualifiers[name_tag][0]
-                    except:
-                        name = record.qualifiers['label'][0]
-                    if feature.strand < 0:
-                        strand = "-"
                     else:
-                        strand = "+"
-                    print(*[chromosome, start, end, name,
+                        name = '*'
+                    strand = '-' if record.strand < 0 else '+'
+                    print(*[chromosome.name, start, end, name,
                             0, strand], sep='\t', file=OUT)
 
 
