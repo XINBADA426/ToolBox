@@ -21,6 +21,10 @@ Scripts to deal with tables
 ### formattable.py
 以较为美观的方式打印表格
 
+### columntool.py
+表格列名重命名
+按照指定列名重排表格
+
 ## igv
 Scripts to use igv to plot pic
 
