@@ -25,6 +25,9 @@ Scripts to deal with tables
 表格列名重命名
 按照指定列名重排表格
 
+### group_mean.py
+计算各组均值
+
 ## igv
 Scripts to use igv to plot pic
 
