@@ -34,3 +34,9 @@ Scripts to use igv to plot pic
 ## one_gene_bam.py
 使用基因序列及基因比对bam文件获取read在该基因的分布情况
 
+## stat
+Scripts to do stat analysis
+
+### correlation_analysis.py
+利用连个表达量表做相关性分析
+
