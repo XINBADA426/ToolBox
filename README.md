@@ -7,6 +7,9 @@ Scripts to deal with fq/fq.gz files
 ### fqcombain.py
 合并分批下机的原始数据
 
+### fq_remove.py
+利用过滤后的fq文件，提取原始fq文件中的reads
+
 
 ## fa
 Scripts to deal with fa files
