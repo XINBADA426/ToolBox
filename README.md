@@ -38,5 +38,14 @@ Scripts to use igv to plot pic
 Scripts to do stat analysis
 
 ### correlation_analysis.py
-利用连个表达量表做相关性分析
+利用两个表达量表做相关性分析
+
+## db
+一些常用的处理数据库的脚本
+
+### cazy
+处理CAZy数据库的脚本
+
+### phi
+处理PHI数据库的脚本
 
