@@ -102,7 +102,7 @@ class Tree(object):
                     parent_taxon, taxon_rank)
 
             self.tree[taxon_id] = {'clade': f'{taxon_rank}',
-                                   'taxon': f'{parent_taxon};{prefix}{taxon_name}'}
+                                   'taxon': f'{parent_taxon}|{prefix}{taxon_name}'}
         else:
             self.tree[taxon_id] = self.tree[parent_taxon_id]
 
