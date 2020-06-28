@@ -72,10 +72,12 @@ class Tree(object):
         with open(file_node, 'r') as IN:
             for line in IN:
                 arr = [i.strip() for i in line.split('|')]
-                # Bacteria | Archaea | Viruses | Viroids | Eukaryota
+                # Bacteria | Archaea | Viruses | Viroids | Eukaryota | Fungi
+                if arr[2] == "kingdom":
+                    arr[2] = "otherkingdom"
                 if arr[0] == '2' or arr[0] == '2157' or arr[0] == '10239' or \
-                        arr[
-                            0] == '12884' or arr[0] == '2759':
+                        arr[0] == '12884' or arr[0] == '2759' or \
+                        arr[0] == "4751":
                     arr[2] = 'kingdom'
                 if arr[2] == 'kingdom':
                     arr[1] = '1'
@@ -114,14 +116,14 @@ class Tree(object):
                 elif key == taxon_rank:
                     return parent_taxon
                 else:
-                    parent_taxon = f'{parent_taxon};{value}{key}_noname'
+                    parent_taxon = f'{parent_taxon}|{value}{key}_noname'
         else:
-            basename = parent_taxon.strip().split(';')[-1].split('__')[1]
+            basename = parent_taxon.strip().split('|')[-1].split('__')[1]
             for key, value in self.prefix.items():
                 if key == taxon_rank:
                     return parent_taxon
                 if value not in parent_taxon:
-                    parent_taxon = f'{parent_taxon};{value}{basename}_noname'
+                    parent_taxon = f'{parent_taxon}|{value}{basename}_noname'
 
     def to_pickle(self, output):
         """
