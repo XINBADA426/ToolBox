@@ -74,7 +74,7 @@ class Tree(object):
                 arr = [i.strip() for i in line.split('|')]
                 # Bacteria | Archaea | Viruses | Viroids | Eukaryota | Fungi
                 if arr[2] == "kingdom":
-                    arr[2] = "otherkingdom"
+                    arr[2] = "Others"
                 if arr[0] == '2' or arr[0] == '2157' or arr[0] == '10239' or \
                         arr[0] == '12884' or arr[0] == '2759' or \
                         arr[0] == "4751":
@@ -97,14 +97,18 @@ class Tree(object):
 
         if taxon_rank in self.prefix:
             parent_taxon = self.tree[parent_taxon_id]['taxon']
+            parent_taxon_rank = self.tree[parent_taxon_id]['clade']
             prefix = self.prefix[taxon_rank]
 
-            if self.prefix[self.last_clade[taxon_rank]] not in parent_taxon:
-                parent_taxon = self.get_full_taxon(
-                    parent_taxon, taxon_rank)
+            if parent_taxon_rank == taxon_rank:
+                self.tree[taxon_id] = self.tree[parent_taxon_id]
+            else:
+                if self.prefix[self.last_clade[taxon_rank]] not in parent_taxon:
+                    parent_taxon = self.get_full_taxon(
+                        parent_taxon, taxon_rank)
 
-            self.tree[taxon_id] = {'clade': f'{taxon_rank}',
-                                   'taxon': f'{parent_taxon}|{prefix}{taxon_name}'}
+                self.tree[taxon_id] = {'clade': f'{taxon_rank}',
+                                       'taxon': f'{parent_taxon}|{prefix}{taxon_name}'}
         else:
             self.tree[taxon_id] = self.tree[parent_taxon_id]
 
