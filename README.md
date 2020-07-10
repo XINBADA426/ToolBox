@@ -31,17 +31,21 @@ Scripts to deal with tables
 ### group_mean.py
 计算各组均值
 
+
 ## igv
 Scripts to use igv to plot pic
 
+
 ## one_gene_bam.py
 使用基因序列及基因比对bam文件获取read在该基因的分布情况
+
 
 ## stat
 Scripts to do stat analysis
 
 ### correlation_analysis.py
 利用两个表达量表做相关性分析
+
 
 ## db
 一些常用的处理数据库的脚本
@@ -55,3 +59,7 @@ Scripts to do stat analysis
 ### taxon
 处理物种相关信息的脚本
 
+
+## network
+处理网络图的一些脚本
+- `modify4gephisvg.py`：修饰gephi生成的svg图形
