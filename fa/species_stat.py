@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Ming
 # @Date:   2020-07-11 10:32:16
-# @Last Modified by:   Ming
-# @Last Modified time: 2020-07-12 13:41:07
+# @Last Modified by:   MingJia
+# @Last Modified time: 2020-07-13 17:57:21
 import gzip
 import logging
 import os
@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO,
 __version__ = '1.0.0'
 
 
-def parse_diamod_report(file_diamond_tab, file_acc2taxon, file_names_dmp,
-                        file_out):
+def parse_m8_report(file_diamond_tab, file_acc2taxon, file_names_dmp,
+                    file_out):
     """
     Parse the diamond report
     """
@@ -153,8 +153,69 @@ def diamond(fasta, db, diamond, program, param, acc2taxon, names, out, prefix):
     except subprocess.CalledProcessError as e:
         logging.error(f"{e}")
 
-    parse_diamod_report(f"{dir_out}/{prefix}.tab", acc2taxon,
-                        names, f"{dir_out}/{prefix}.spe.txt")
+    parse_m8_report(f"{dir_out}/{prefix}.tab", acc2taxon,
+                    names, f"{dir_out}/{prefix}.spe.txt")
+
+
+@click.command()
+@click.option('-f', '--fasta',
+              required=True,
+              type=click.Path(),
+              help="The input fasta file")
+@click.option('--db',
+              default="/Bio/Database/Database/nt/20180813/db/nt",
+              show_default=True,
+              help="The database path to use")
+@click.option('--blast',
+              default="/Bio/bin/blastn",
+              show_default=True,
+              type=click.Path(),
+              help="The blast path")
+@click.option('--param',
+              default="-num_threads 4 -evalue 1e-5 -max_target_seqs 20 -outfmt 6",
+              show_default=True,
+              help="The blast param")
+@click.option('--acc2taxon',
+              default="/Bio/Database/Database/nt/20180813/nucl_gb.accession2taxid.gz",
+              show_default=True,
+              type=click.Path(),
+              help="The accession2taxid file")
+@click.option('--names',
+              default="/Bio/Database/Database/nt/20180813/taxdump/names.dmp",
+              show_default=True,
+              type=click.Path(),
+              help="The names.dmp file")
+@click.option('--out',
+              default="./",
+              show_default=True,
+              help="The out put dir")
+@click.option('--prefix',
+              default="result",
+              show_default=True,
+              help="The out put prefix")
+def blast(fasta, db, blast, param, acc2taxon, names, out, prefix):
+    """
+    Use blast to get the species info of the fasta seq
+
+    Be attention please!!!
+    Slow Slow Slow
+    It must use the big mem node in parse blast tab
+    """
+    fasta = os.path.abspath(fasta)
+    dir_out = os.path.abspath(out)
+    if not os.path.exists(dir_out):
+        logging.info(f"{dir_out} not exists, make it")
+        os.makedirs(dir_out)
+    logging.info(f"Query the {fasta} through {blast}")
+    cmd = f"{blast} {param} -db {db} -query {fasta} -out {dir_out}/{prefix}.tab"
+    logging.info(cmd)
+    try:
+        subprocess.check_output(cmd, shell=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"{e}")
+
+    parse_m8_report(f"{dir_out}/{prefix}.tab", acc2taxon,
+                    names, f"{dir_out}/{prefix}.spe.txt")
 
 
 @click.command()
@@ -204,6 +265,7 @@ def kraken2(fasta, db, kraken2, param, out, prefix):
 
 
 cli.add_command(diamond)
+cli.add_command(blast)
 cli.add_command(kraken2)
 
 if __name__ == "__main__":
