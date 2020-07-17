@@ -4,20 +4,38 @@
 # @Date:   2020-07-15 9:59:14
 # @Last Modified by:   MingJia
 # @Last Modified time: 2020-07-15 9:59:14
+
+# TODO
+# - support for unweighted_unifrac
+# - support for weighted_unifrac
+
 import logging
+import sys
 
 import click
 import pandas as pd
 from skbio import diversity
 
+#### Some Functions ####
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 __version__ = '1.0.0'
 
+metric_alpha = diversity.get_alpha_diversity_metrics()
+metric_beta = ["braycurtis", "canberra", "chebyshev", "cityblock",
+               "correlation", "cosine", "dice", "euclidean", "hamming",
+               "jaccard", "jensenshannon", "kulsinski", "mahalanobis",
+               "matching", "minkowski", "rogerstanimoto", "russellrao",
+               "seuclidean", "sokalmichener", "sokalsneath", "sqeuclidean",
+               "yule", "unweighted_unifrac", "weighted_unifrac"]
+
+########################
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group(
+    context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=__version__)
 def cli():
     """
@@ -38,7 +56,7 @@ def cli():
               metavar=f'[ace | chao1 | ...]',
               multiple=True,
               help=f"""Alpha-diversity metric(s) to use, you can choose from
-                       {diversity.get_alpha_diversity_metrics()}""")
+                       {metric_alpha}""")
 @click.option('-o', '--out',
               default="./result.txt",
               show_default=True,
@@ -66,20 +84,33 @@ def alpha(input, metric, out):
               help="The input table file")
 @click.option("-m", "--metric",
               required=True,
-              type=click.Choice(diversity.get_beta_diversity_metrics(),
+              metavar=f'[ braycurtis | jaccard | ...]',
+              type=click.Choice(metric_beta,
                                 case_sensitive=False),
               multiple=True,
-              help=f"""Beta-diversity metric(s) to use""")
-@click.option('-o', '--out',
-              default="./result.txt",
+              help=f"""Beta-diversity metric(s) to use, you can choose from
+                        {metric_beta}""")
+@click.option('-p', '--prefix',
+              default="./result",
               show_default=True,
-              type=click.Path(),
-              help="The out put result")
-def beta(input, metric, out):
+              help="The out put prefix")
+def beta(input, metric, prefix):
     """
     Beta diversity analysis
     """
-    pass
+    df = pd.read_csv(input, index_col=0, sep='\t')
+    samples = df.columns
+    for i in metric:
+        logging.info(f"{i} analysis ...")
+        if i == "unweighted_unifrac" or i == "weighted_unifrac":
+            logging.error(f"Don't support {i} now, Stop here")
+            sys.exit(1)
+        else:
+            res = diversity.beta_diversity(i, df.T)
+        df_out = pd.DataFrame(res.data, index=samples, columns=samples)
+        file_out = f"{prefix}.{i}.tsv"
+        logging.info(f"Save {i} result to {file_out}")
+        df_out.to_csv(file_out, sep='\t')
 
 
 cli.add_command(alpha)
