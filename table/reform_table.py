@@ -30,15 +30,31 @@ def cli():
               type=click.Path(),
               required=True,
               help='The input table')
-@click.option('-o', '--out',
+@click.option('--index',
               required=True,
+              help='The index column name')
+@click.option('--column',
+              required=True,
+              help='The column name used to generate new column names')
+@click.option('--value',
+              required=True,
+              help='The column name used to generate new table values')
+@click.option('-o', '--out',
+              default="wide.tsv",
+              show_default=True,
               help='The out put file name')
-def l2w(table, out):
+def l2w(table, index, column, value, out):
     """
     Long form table to wide form table
     """
-
-    pass
+    logging.info(f"Parse the input table {table}...")
+    df = pd.read_csv(table, sep='\t')
+    logging.info('Formating...')
+    res = df.pivot(index=index,
+                   columns=column,
+                   values=value)
+    logging.info(f"Output to {out}...")
+    res.to_csv(out, sep='\t', index=True)
 
 
 @click.command()
