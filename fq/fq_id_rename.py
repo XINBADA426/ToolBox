@@ -13,7 +13,7 @@ from Bio import SeqIO
 #### Some Functions ####
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 ########################
 
@@ -27,11 +27,15 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               required=True,
               type=click.Path(),
               help="The fastq input")
+@click.option('-t', '--type',
+              required=True,
+              type=click.Choice(['1', '2']),
+              help="Read1 or Read2")
 @click.option('-o', '--out',
               required=True,
               type=click.Path(),
               help="The out put fastq gz file")
-def cli(fastq, out):
+def cli(fastq, type, out):
     """
     Rename the input fastq.gz file's id
 
@@ -40,11 +44,15 @@ def cli(fastq, out):
     id's are same
     """
     number = 1
+    if type == '1':
+        desc = '1:N:0:NAGCGTTA'
+    else:
+        desc = '2:N:0:NAGCGTTA'
     with gzip.open(out, 'wt') as OUT:
         logging.info(f'Start to parse {fastq}')
         for record in SeqIO.parse(gzip.open(fastq, 'rt'), 'fastq'):
             record.id = str(number)
-            record.description = record.id
+            record.description = f"{record.id} {desc}"
             SeqIO.write(record, OUT, 'fastq')
             number += 1
     logging.info('Finish rename the fq id')
