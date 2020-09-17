@@ -31,6 +31,9 @@ Scripts to deal with tables
 ### group_mean.py
 计算各组均值
 
+### reform_table.py
+长表格同宽表格之间的相互转换
+
 
 ## igv
 Scripts to use igv to plot pic
