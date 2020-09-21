@@ -4,6 +4,7 @@
 # @Date:   2020-09-20 07:38:27
 # @Last Modified by:   MingJia
 # @Last Modified time: 2020-09-20 07:38:27
+from datetime import date, timedelta
 import logging
 import os
 import sqlite3
@@ -14,6 +15,17 @@ import click
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 __version__ = '1.0.0'
+
+
+def parse_list_file(file_name):
+    """
+    Parse the one column file
+    """
+    res = set()
+    with open(file_name, 'r') as IN:
+        for line in IN:
+            res.add(line.stirp())
+    return res
 
 
 def parse_project_table(file_name):
@@ -57,6 +69,23 @@ def parse_project_table(file_name):
                     clean,
                     deep_clean]
             res.append(info)
+    return res
+
+
+def screen_by_time(start, end, cursor):
+    """
+    Screen the data in the project db by start and end time
+    """
+    sql = f'''SELECT analysis_id, server_address FROM info
+            WHERE time_finish >= \"{start}\"
+            AND 
+            time_finish <= \"{end}\"'''
+    cursor.execute(sql)
+    res = cursor.fetchall()
+    if len(res) > 0:
+        res = {i[0]: i[1] for i in res}
+    else:
+        res = None
     return res
 
 
@@ -126,7 +155,46 @@ def init(input, out):
     connect.close()
 
 
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--start',
+              default=date.today() - timedelta(180),
+              show_default=True,
+              help="The start time you want to clean")
+@click.option('--end',
+              default=date.today() - timedelta(90),
+              show_default=True,
+              help="The end time you want to clean")
+@click.option('--names',
+              type=click.Path(),
+              help="The file contain the analysis names will be clean")
+@click.option('--db',
+              default="/home/renchaobo/db/clean/project.db",
+              show_default=True,
+              type=click.Path(),
+              help="The project database")
+@click.option("--log",
+              required=True,
+              type=click.Path(),
+              help="The mild clean log")
+def mild(start, end, names, db, log):
+    """
+    Mild clean
+    """
+    if names:
+        logging.info(f"Parse the name file {names}...")
+        analysis_names = parse_list_file(names)
+    logging.info(f"Connect the database {db}...")
+    connect = sqlite3.connect(db)
+    cursor = connect.cursor()
+
+    tmp = screen_by_time(start, end, cursor)
+
+    cursor.close()
+    connect.close()
+
+
 cli.add_command(init)
+cli.add_command(mild)
 
 if __name__ == "__main__":
     cli()
