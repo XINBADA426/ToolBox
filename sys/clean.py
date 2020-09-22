@@ -5,6 +5,7 @@
 # @Last Modified by:   MingJia
 # @Last Modified time: 2020-09-20 07:38:27
 from datetime import date, timedelta
+import subprocess
 import logging
 import os
 import sqlite3
@@ -15,6 +16,62 @@ import click
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 __version__ = '1.0.0'
+
+
+class Analysis(object):
+    """A Class for deal with analysis
+    """
+
+    def __init__(self, info):
+        """
+        Init the Analysis Class
+
+        :param info: Info fetch from database
+        """
+        super(Pipe, self).__init__()
+        self.project_id = info[0]
+        self.analysis_id = info[1]
+        self.analysis_type = info[2]
+        self.product_line = info[3]
+        self.time_finish = info[4]
+        self.time_clean = info[5]
+        self.size_before_clean = info[6]
+        self.size_after_clean = info[7]
+        self.server_address = info[8]
+        self.ftp_address = info[9]
+        self.clean = int(info[10])
+        self.deep_clean = int(info[11])
+
+    def get_dir_size(self):
+        """
+        Get the analysis dir size
+        """
+        try:
+            res = subprocess.check_output(["du", "-sh", self.server_address]).decode().split('\t')[0]
+        except:
+            logging.error(f"Check dir size err {self.analysis_id}: {self.server_address}")
+        return res
+
+    def mild(self):
+        """
+        Mild clean for the analysis
+        """
+        if self.size_before_clean = "NA":
+            self.size_before_clean = self.get_dir_size()
+
+        pass
+
+    def deep(self):
+        """
+
+        """
+        pass
+
+    def update(self, cursor):
+        """
+
+        """
+        pass
 
 
 def parse_list_file(file_name):
@@ -81,11 +138,11 @@ def screen_by_time(start, end, cursor):
             AND 
             time_finish <= \"{end}\"'''
     cursor.execute(sql)
-    res = cursor.fetchall()
-    if len(res) > 0:
-        res = {i[0]: i[1] for i in res}
+    infos = cursor.fetchall()
+    if len(infos) > 0:
+        res = {i[0]: i[1] for i in infos}
     else:
-        res = None
+        res = {}
     return res
 
 
@@ -179,15 +236,21 @@ def init(input, out):
 def mild(start, end, names, db, log):
     """
     Mild clean
+
+    如果提供分析名称文件，则只清理start-end之间，并
+    包含在分析名称文件内的项目
     """
-    if names:
-        logging.info(f"Parse the name file {names}...")
-        analysis_names = parse_list_file(names)
     logging.info(f"Connect the database {db}...")
     connect = sqlite3.connect(db)
     cursor = connect.cursor()
 
-    tmp = screen_by_time(start, end, cursor)
+    analysis_infos = screen_by_time(start, end, cursor)
+    if names:
+        logging.info(f"Parse the name file {names}...")
+        analysis_names = parse_list_file(names)
+        analysis_infos = {i: analysis_infos[i] for i in analysis_names if i in analysis_infos}
+
+    print(analysis_infos)
 
     cursor.close()
     connect.close()
