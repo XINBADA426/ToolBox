@@ -56,10 +56,22 @@ class Analysis(object):
         """
         Mild clean for the analysis
         """
-        if self.size_before_clean = "NA":
+        if self.time_finish == "NA":
+            logging.warning(f"{self.analysis_id} not finish")
+            return
+        if self.size_before_clean == "NA":
             self.size_before_clean = self.get_dir_size()
 
-        pass
+        if self.analysis_type == "补充分析" or self.analysis_type == "个性化分析":
+
+            pass
+        else:
+            pass
+
+
+        self.time_clean = date.today()
+        self.size_after_clean = self.get_dir_size()
+        self.clean = 1
 
     def deep(self):
         """
