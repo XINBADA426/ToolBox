@@ -4,11 +4,11 @@
 # @Date:   2020-09-20 07:38:27
 # @Last Modified by:   MingJia
 # @Last Modified time: 2020-09-20 07:38:27
-from datetime import date, timedelta
-import subprocess
 import logging
 import os
 import sqlite3
+import subprocess
+from datetime import date, timedelta
 
 import click
 
@@ -17,6 +17,34 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 __version__ = '1.0.0'
 
+
+def deep_clean_command(dir_path):
+    """
+
+    :return:
+    """
+    command = f"""
+find dir_path -type d \
+-name *.qsub \
+-name *_map \
+-delete
+find dir_path -type f \
+! -iname "*.py" \
+! -iname "*.sh" \
+! -iname "*.r" \
+! -iname "*.pl" \
+! -iname "*.conf" \
+! -iname "*.yml" \
+! -iname "*.yaml" \
+! -iname "*.ini" \
+! -iname "*.nf" \
+! -iname "*.config" \
+! -iname "*.tar.bz2" \
+! -iname "*.tar.gz" \
+! -iname "*.tbz2" \
+-delete
+"""
+    return command
 
 class Analysis(object):
     """A Class for deal with analysis
@@ -41,15 +69,19 @@ class Analysis(object):
         self.ftp_address = info[9]
         self.clean = int(info[10])
         self.deep_clean = int(info[11])
+        if self.server_address == "NA":
+            raise Exception(f"Server address for {self.analysis_id} is None")
 
     def get_dir_size(self):
         """
         Get the analysis dir size
         """
         try:
-            res = subprocess.check_output(["du", "-sh", self.server_address]).decode().split('\t')[0]
+            res = subprocess.check_output(
+                ["du", "-sh", self.server_address]).decode().split('\t')[0]
         except:
-            logging.error(f"Check dir size err {self.analysis_id}: {self.server_address}")
+            logging.error(
+                f"Check dir size err {self.analysis_id}: {self.server_address}")
         return res
 
     def mild(self):
@@ -57,17 +89,19 @@ class Analysis(object):
         Mild clean for the analysis
         """
         if self.time_finish == "NA":
-            logging.warning(f"{self.analysis_id} not finish")
-            return
+            raise Exception(f"{self.analysis_id} not finish")
         if self.size_before_clean == "NA":
             self.size_before_clean = self.get_dir_size()
 
         if self.analysis_type == "补充分析" or self.analysis_type == "个性化分析":
-
-            pass
+            command = deep_clean_command(self.server_address)
+            subprocess.run(command, shell=True)
         else:
-            pass
+            if "宏基因组" in self.product_line:
 
+                pass
+            elif "" in self.product_line:
+                pass
 
         self.time_clean = date.today()
         self.size_after_clean = self.get_dir_size()
@@ -111,11 +145,15 @@ def parse_project_table(file_name):
             analysis_info = arr[1].split('/')
             analysis_id = analysis_info[0]
             if '例' in analysis_info[1]:
-                analysis_type = analysis_info[2] if len(analysis_info) > 2 else "NA"
-                product_line = analysis_info[3] if len(analysis_info) > 3 else "NA"
+                analysis_type = analysis_info[2] if len(
+                    analysis_info) > 2 else "NA"
+                product_line = analysis_info[3] if len(
+                    analysis_info) > 3 else "NA"
             else:
-                analysis_type = analysis_info[1] if len(analysis_info) > 1 else "NA"
-                product_line = analysis_info[2] if len(analysis_info) > 2 else "NA"
+                analysis_type = analysis_info[1] if len(
+                    analysis_info) > 1 else "NA"
+                product_line = analysis_info[2] if len(
+                    analysis_info) > 2 else "NA"
             time_finish = arr[12] if arr[12] else "NA"
             time_clean = 'NA'
             size_before_clean = "NA"
@@ -217,7 +255,8 @@ def init(input, out):
             deep_clean INTEGER)'''
     cursor.execute(sql)
     logging.info("Insert data to table info...")
-    cursor.executemany('INSERT INTO info VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', project_info)
+    cursor.executemany('INSERT INTO info VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+                       project_info)
     connect.commit()
 
     cursor.close()
@@ -260,12 +299,38 @@ def mild(start, end, names, db, log):
     if names:
         logging.info(f"Parse the name file {names}...")
         analysis_names = parse_list_file(names)
-        analysis_infos = {i: analysis_infos[i] for i in analysis_names if i in analysis_infos}
+        analysis_infos = {i: analysis_infos[i] for i in analysis_names if
+                          i in analysis_infos}
 
     print(analysis_infos)
 
     cursor.close()
     connect.close()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--db',
+              default="/home/renchaobo/db/clean/project.db",
+              show_default="True",
+              type=click.Path(),
+              help="The project info database")
+@click.option('-l', '--list',
+              type=click.Path(),
+              help="The list file contain the analysis id you want to deal with")
+@click.option('-o', '--out',
+              default="/home/renchaobo/db/clean/project.db",
+              show_default=True,
+              type=click.Path(),
+              help="The out put sqlite3 database that contain project info")
+def light():
+    """
+    Light clean for the project
+
+    :param input:
+    :param out:
+    :return:
+    """
+    pass
 
 
 cli.add_command(init)
