@@ -18,17 +18,36 @@ logging.basicConfig(level=logging.INFO,
 __version__ = '1.0.0'
 
 
+def mild_clean_command(dir_path):
+    """
+    Generate mild clean command
+
+    :param dir_path: The dir you want to clean
+    :return:
+    """
+    command = f"""
+find {dir_path} -type d \
+-name *.qsub \
+-name *_map \
+-delete
+find {dir_path} -type f \
+-iname *clean.sh \
+-exec bash {{}}
+"""
+    return command
+
+
 def deep_clean_command(dir_path):
     """
 
     :return:
     """
     command = f"""
-find dir_path -type d \
+find {dir_path} -type d \
 -name *.qsub \
 -name *_map \
 -delete
-find dir_path -type f \
+find {dir_path} -type f \
 ! -iname "*.py" \
 ! -iname "*.sh" \
 ! -iname "*.r" \
@@ -46,6 +65,7 @@ find dir_path -type f \
 """
     return command
 
+
 class Analysis(object):
     """A Class for deal with analysis
     """
@@ -56,7 +76,7 @@ class Analysis(object):
 
         :param info: Info fetch from database
         """
-        super(Pipe, self).__init__()
+        super(Analysis, self).__init__()
         self.project_id = info[0]
         self.analysis_id = info[1]
         self.analysis_type = info[2]
@@ -84,7 +104,7 @@ class Analysis(object):
                 f"Check dir size err {self.analysis_id}: {self.server_address}")
         return res
 
-    def mild(self):
+    def mild(self, cursor):
         """
         Mild clean for the analysis
         """
@@ -95,29 +115,50 @@ class Analysis(object):
 
         if self.analysis_type == "补充分析" or self.analysis_type == "个性化分析":
             command = deep_clean_command(self.server_address)
-            subprocess.run(command, shell=True)
         else:
-            if "宏基因组" in self.product_line:
-
-                pass
-            elif "" in self.product_line:
-                pass
+            # 先偷懒处理
+            if "有参RNA-seq" in self.product_line:
+                command = mild_clean_command(self.server_address)
+            elif "宏基因组" in self.product_line:
+                command = mild_clean_command(self.server_address)
+            elif "10X" in self.product_line:
+                command = mild_clean_command(self.server_address)
+        subprocess.run(command, shell=True)
 
         self.time_clean = date.today()
         self.size_after_clean = self.get_dir_size()
         self.clean = 1
+        self.update(cursor)
 
-    def deep(self):
+    def deep(self, cursor):
         """
-
+        Deep clean for the analysis
         """
-        pass
+        if self.time_finish == "NA":
+            raise Exception(f"{self.analysis_id} not finish")
+        if self.size_before_clean == "NA":
+            self.size_before_clean = self.get_dir_size()
+        command = deep_clean_command(self.server_address)
+        subprocess.run(command, shell=True)
+        self.time_clean = date.today()
+        self.size_after_clean = self.get_dir_size()
+        self.clean = 1
+        self.update(cursor)
 
     def update(self, cursor):
         """
-
         """
-        pass
+        sql = f"""UPDATE info
+SET time_finish = \"{self.time_finish}\",
+    time_clean = \"{self.time_clean}\",
+    size_before_clean = \"{self.size_before_clean}\",
+    size_after_clean = \"{self.size_after_clean}\",
+    clean = \"{self.clean}\",
+    deep_clean = \"{self.deep_clean}\"
+WHERE analysis_id = \"{self.analysis_id}\"
+"""
+        cursor.execute(sql)
+        cursor.commit()
 
 
 def parse_list_file(file_name):
@@ -183,24 +224,17 @@ def screen_by_time(start, end, cursor):
     """
     Screen the data in the project db by start and end time
     """
-    sql = f'''SELECT analysis_id, server_address FROM info
+    sql = f'''SELECT * FROM info
             WHERE time_finish >= \"{start}\"
             AND 
             time_finish <= \"{end}\"'''
     cursor.execute(sql)
     infos = cursor.fetchall()
     if len(infos) > 0:
-        res = {i[0]: i[1] for i in infos}
+        res = {i[1]: i for i in infos}
     else:
         res = {}
     return res
-
-
-def db_update(info, cursor):
-    """
-    Update the project info database
-    """
-    pass
 
 
 ########################
@@ -288,8 +322,7 @@ def mild(start, end, names, db, log):
     """
     Mild clean
 
-    如果提供分析名称文件，则只清理start-end之间，并
-    包含在分析名称文件内的项目
+    如果提供分析名称文件，则只清理start-end之间，并包含在分析名称文件内的项目
     """
     logging.info(f"Connect the database {db}...")
     connect = sqlite3.connect(db)
@@ -301,36 +334,30 @@ def mild(start, end, names, db, log):
         analysis_names = parse_list_file(names)
         analysis_infos = {i: analysis_infos[i] for i in analysis_names if
                           i in analysis_infos}
-
-    print(analysis_infos)
+    res = []
+    for analysis_id, info in analysis_infos.items():
+        obj = Analysis(info)
+        obj.mild(cursor)
+        res.append(obj)
 
     cursor.close()
     connect.close()
 
-
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--db',
-              default="/home/renchaobo/db/clean/project.db",
-              show_default="True",
-              type=click.Path(),
-              help="The project info database")
-@click.option('-l', '--list',
-              type=click.Path(),
-              help="The list file contain the analysis id you want to deal with")
-@click.option('-o', '--out',
-              default="/home/renchaobo/db/clean/project.db",
-              show_default=True,
-              type=click.Path(),
-              help="The out put sqlite3 database that contain project info")
-def light():
-    """
-    Light clean for the project
-
-    :param input:
-    :param out:
-    :return:
-    """
-    pass
+    header = ["project_id", "analysis_id", "analysis_type", "product_line",
+              "time_finish", "time_clean", "size_before_clean",
+              "size_after_clean", "server_address", "ftp_address", "clean",
+              "deep_clean"]
+    logging.info(f"Out put the clean log...")
+    with open(log, 'w') as OUT:
+        print(*header, sep='\t', file=OUT)
+        for i in res:
+            tmp = [i.project_id, i.analysis_id,
+                   i.analysis_type, i.product_line,
+                   i.time_finish, i.time_clean,
+                   i.size_before_clean, i.size_after_clean,
+                   i.server_address, i.ftp_address,
+                   i.clean, i.deep_clean]
+            print(*tmp, sep='\t', file=OUT)
 
 
 cli.add_command(init)
