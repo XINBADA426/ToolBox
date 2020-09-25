@@ -89,8 +89,6 @@ class Analysis(object):
         self.ftp_address = info[9]
         self.clean = int(info[10])
         self.deep_clean = int(info[11])
-        if self.server_address == "NA":
-            raise Exception(f"Server address for {self.analysis_id} is None")
 
     def get_dir_size(self):
         """
@@ -108,8 +106,11 @@ class Analysis(object):
         """
         Mild clean for the analysis
         """
+        if self.server_address == "NA":
+            raise Exception(f"Server address for {self.analysis_id} is None")
         if self.time_finish == "NA":
             raise Exception(f"{self.analysis_id} not finish")
+
         if self.size_before_clean == "NA":
             self.size_before_clean = self.get_dir_size()
 
@@ -142,7 +143,7 @@ class Analysis(object):
         subprocess.run(command, shell=True)
         self.time_clean = date.today()
         self.size_after_clean = self.get_dir_size()
-        self.clean = 1
+        self.deep_clean = 1
         self.update(cursor)
 
     def update(self, cursor):
@@ -360,8 +361,72 @@ def mild(start, end, names, db, log):
             print(*tmp, sep='\t', file=OUT)
 
 
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--start',
+              default=date.today() - timedelta(180),
+              show_default=True,
+              help="The start time you want to clean")
+@click.option('--end',
+              default=date.today() - timedelta(90),
+              show_default=True,
+              help="The end time you want to clean")
+@click.option('--names',
+              type=click.Path(),
+              help="The file contain the analysis names will be clean")
+@click.option('--db',
+              default="/home/renchaobo/db/clean/project.db",
+              show_default=True,
+              type=click.Path(),
+              help="The project database")
+@click.option("--log",
+              required=True,
+              type=click.Path(),
+              help="The mild clean log")
+def deep(start, end, names, db, log):
+    """
+    Deep clean
+
+    如果提供分析名称文件，则只清理start-end之间，并包含在分析名称文件内的项目
+    """
+    logging.info(f"Connect the database {db}...")
+    connect = sqlite3.connect(db)
+    cursor = connect.cursor()
+
+    analysis_infos = screen_by_time(start, end, cursor)
+    if names:
+        logging.info(f"Parse the name file {names}...")
+        analysis_names = parse_list_file(names)
+        analysis_infos = {i: analysis_infos[i] for i in analysis_names if
+                          i in analysis_infos}
+    res = []
+    for analysis_id, info in analysis_infos.items():
+        obj = Analysis(info)
+        obj.deep(cursor)
+        res.append(obj)
+
+    cursor.close()
+    connect.close()
+
+    header = ["project_id", "analysis_id", "analysis_type", "product_line",
+              "time_finish", "time_clean", "size_before_clean",
+              "size_after_clean", "server_address", "ftp_address", "clean",
+              "deep_clean"]
+    logging.info(f"Out put the clean log...")
+    with open(log, 'w') as OUT:
+        print(*header, sep='\t', file=OUT)
+        for i in res:
+            tmp = [i.project_id, i.analysis_id,
+                   i.analysis_type, i.product_line,
+                   i.time_finish, i.time_clean,
+                   i.size_before_clean, i.size_after_clean,
+                   i.server_address, i.ftp_address,
+                   i.clean, i.deep_clean]
+            print(*tmp, sep='\t', file=OUT)
+
+
 cli.add_command(init)
 cli.add_command(mild)
+cli.add_command(deep)
 
 if __name__ == "__main__":
     cli()
