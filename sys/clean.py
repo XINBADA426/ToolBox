@@ -306,9 +306,12 @@ def init(input, out):
               default=date.today() - timedelta(90),
               show_default=True,
               help="The end time you want to clean")
-@click.option('--names',
+@click.option('--include',
               type=click.Path(),
               help="The file contain the analysis names will be clean")
+@click.option('--exclude',
+              type=click.Path(),
+              help="The file contain the analysis names should be exclude")
 @click.option('--db',
               default="/home/renchaobo/db/clean/project.db",
               show_default=True,
@@ -318,7 +321,7 @@ def init(input, out):
               required=True,
               type=click.Path(),
               help="The mild clean log")
-def mild(start, end, names, db, log):
+def mild(start, end, include, exclude, db, log):
     """
     Mild clean
 
@@ -329,11 +332,15 @@ def mild(start, end, names, db, log):
     cursor = connect.cursor()
 
     analysis_infos = screen_by_time(start, end, cursor)
-    if names:
-        logging.info(f"Parse the name file {names}...")
-        analysis_names = parse_list_file(names)
-        analysis_infos = {i: analysis_infos[i] for i in analysis_names if
-                          i in analysis_infos}
+    if include:
+        logging.info(f"Parse the include file {include}...")
+        include_names = parse_list_file(include)
+        analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if i in include_names}
+    if exclude:
+        logging.info(f"Parse the include file {exclude}...")
+        exclude_names = parse_list_file(exclude)
+        analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if i not in exclude_names}
+
     res = []
     for analysis_id, info in analysis_infos.items():
         obj = Analysis(info)

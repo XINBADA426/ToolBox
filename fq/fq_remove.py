@@ -47,38 +47,28 @@ def cli(rawdata, filterdata, number, out):
 
     The fq files must gz file
     """
-    logging.info('Start...')
+    logging.info(f"Parse {filterdata}...")
+    pool = set()
+    if number:
+        for record in SeqIO.parse(gzip.open(filterdata, 'rt'), 'fastq'):
+            if number > 0:
+                pool.add(record.name)
+                number -= 1
+            else:
+                break
+    else:
+        for record in SeqIO.parse(gzip.open(filterdata, 'rt'), 'fastq'):
+            pool.add(record.name)
+
+    logging.info(f"Reads to be removed: {len(pool)}")
+    logging.info(f"Filter {rawdata} and output to {out}...")
     with gzip.open(out, 'wt') as OUT:
-        filter_records = SeqIO.parse(gzip.open(filterdata, 'rt'), 'fastq')
-        filter_record_name = next(filter_records).name
-
-        if number:
-            for ori_record in SeqIO.parse(gzip.open(rawdata, 'rt'), 'fastq'):
-                ori_record_name = ori_record.name
-                if number > 0:
-                    if ori_record_name == filter_record_name:
-                        SeqIO.write(ori_record, OUT, 'fastq')
-                        try:
-                            filter_record_name = next(filter_records).name
-                        except StopIteration:
-                            logging.info(f'Finish Read {filterdata}')
-                            number = 0
-                    else:
-                        number -= 1
-                else:
-                    SeqIO.write(ori_record, OUT, 'fastq')
-
-        else:
-            for ori_record in SeqIO.parse(gzip.open(rawdata, 'rt'), 'fastq'):
-                ori_record_name = ori_record.name
-                if ori_record_name == filter_record_name:
-                    SeqIO.write(ori_record, OUT, 'fastq')
-                    try:
-                        filter_record_name = next(filter_records).name
-                    except StopIteration:
-                        logging.info(f'Finish Read {filterdata}')
-                        break
-
+        for ori_record in SeqIO.parse(gzip.open(rawdata, 'rt'), 'fastq'):
+            ori_record_name = ori_record.name
+            if ori_record_name in pool:
+                pass
+            else:
+                SeqIO.write(ori_record, OUT, "fastq")
     logging.info('Finish')
 
 
