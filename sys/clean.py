@@ -70,7 +70,7 @@ class Analysis(object):
     """A Class for deal with analysis
     """
 
-    def __init__(self, info, connect, cursor):
+    def __init__(self, info, connect, cursor, force=False):
         """
         Init the Analysis Class
 
@@ -91,6 +91,7 @@ class Analysis(object):
         self.deep_clean = int(info[11])
         self.connect = connect
         self.cursor = cursor
+        self.force = force
         if self.server_address == "NA":
             raise Exception(f"Server address for {self.analysis_id} is None")
 
@@ -115,22 +116,23 @@ class Analysis(object):
         if self.size_before_clean == "NA":
             self.size_before_clean = self.get_dir_size()
 
-        if self.analysis_type == "补充分析" or self.analysis_type == "个性化分析":
-            command = deep_clean_command(self.server_address)
-        else:
-            # 先偷懒处理
-            if "有参RNA-seq" in self.product_line:
-                command = mild_clean_command(self.server_address)
-            elif "宏基因组" in self.product_line:
-                command = mild_clean_command(self.server_address)
-            elif "10X" in self.product_line:
-                command = mild_clean_command(self.server_address)
-        subprocess.run(command, shell=True)
+        if self.force or self.clean == 0:
+            if self.analysis_type == "补充分析" or self.analysis_type == "个性化分析":
+                command = deep_clean_command(self.server_address)
+            else:
+                # 先偷懒处理
+                if "有参RNA-seq" in self.product_line:
+                    command = mild_clean_command(self.server_address)
+                elif "宏基因组" in self.product_line:
+                    command = mild_clean_command(self.server_address)
+                elif "10X" in self.product_line:
+                    command = mild_clean_command(self.server_address)
+            subprocess.run(command, shell=True)
 
-        self.time_clean = date.today()
-        self.size_after_clean = self.get_dir_size()
-        self.clean = 1
-        self.update()
+            self.time_clean = date.today()
+            self.size_after_clean = self.get_dir_size()
+            self.clean = 1
+            self.update()
 
     def deep(self):
         """
@@ -140,13 +142,14 @@ class Analysis(object):
             raise Exception(f"{self.analysis_id} not finish")
         if self.size_before_clean == "NA":
             self.size_before_clean = self.get_dir_size()
-        command = deep_clean_command(self.server_address)
-        subprocess.run(command, shell=True)
-        self.time_clean = date.today()
-        self.size_after_clean = self.get_dir_size()
-        self.clean = 1
-        self.deep_clean = 1
-        self.update()
+        if self.force or self.deep_clean == 0:
+            command = deep_clean_command(self.server_address)
+            subprocess.run(command, shell=True)
+            self.time_clean = date.today()
+            self.size_after_clean = self.get_dir_size()
+            self.clean = 1
+            self.deep_clean = 1
+            self.update()
 
     def update(self):
         """
@@ -320,11 +323,15 @@ def init(input, out):
               show_default=True,
               type=click.Path(),
               help="The project database")
+@click.option('--force/--no-force',
+              default=False,
+              show_default=True,
+              help="Whether force clean")
 @click.option("--log",
               required=True,
               type=click.Path(),
               help="The mild clean log")
-def mild(start, end, include, exclude, db, log):
+def mild(start, end, include, exclude, db, force, log):
     """
     Mild clean
 
@@ -348,7 +355,7 @@ def mild(start, end, include, exclude, db, log):
 
     res = []
     for analysis_id, info in analysis_infos.items():
-        obj = Analysis(info, connect, cursor)
+        obj = Analysis(info, connect, cursor, force=force)
         obj.mild()
         res.append(obj)
 
@@ -392,11 +399,15 @@ def mild(start, end, include, exclude, db, log):
               show_default=True,
               type=click.Path(),
               help="The project database")
+@click.option('--force/--no-force',
+              default=False,
+              show_default=True,
+              help="Whether force clean")
 @click.option("--log",
               required=True,
               type=click.Path(),
-              help="The mild clean log")
-def deep(start, end, include, exclude, db, log):
+              help="The deep clean log")
+def deep(start, end, include, exclude, db, force, log):
     """
     Deep clean
 
@@ -420,7 +431,7 @@ def deep(start, end, include, exclude, db, log):
 
     res = []
     for analysis_id, info in analysis_infos.items():
-        obj = Analysis(info, connect, cursor)
+        obj = Analysis(info, connect, cursor, force=force)
         obj.deep()
         res.append(obj)
 
@@ -442,7 +453,6 @@ def deep(start, end, include, exclude, db, log):
                    i.server_address, i.ftp_address,
                    i.clean, i.deep_clean]
             print(*tmp, sep='\t', file=OUT)
-
 
 
 cli.add_command(init)
