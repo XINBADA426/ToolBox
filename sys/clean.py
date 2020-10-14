@@ -70,7 +70,7 @@ class Analysis(object):
     """A Class for deal with analysis
     """
 
-    def __init__(self, info):
+    def __init__(self, info, connect, cursor):
         """
         Init the Analysis Class
 
@@ -89,6 +89,8 @@ class Analysis(object):
         self.ftp_address = info[9]
         self.clean = int(info[10])
         self.deep_clean = int(info[11])
+        self.connect = connect
+        self.cursor = cursor
         if self.server_address == "NA":
             raise Exception(f"Server address for {self.analysis_id} is None")
 
@@ -104,7 +106,7 @@ class Analysis(object):
                 f"Check dir size err {self.analysis_id}: {self.server_address}")
         return res
 
-    def mild(self, cursor):
+    def mild(self):
         """
         Mild clean for the analysis
         """
@@ -128,9 +130,9 @@ class Analysis(object):
         self.time_clean = date.today()
         self.size_after_clean = self.get_dir_size()
         self.clean = 1
-        self.update(cursor)
+        self.update()
 
-    def deep(self, cursor):
+    def deep(self):
         """
         Deep clean for the analysis
         """
@@ -143,9 +145,10 @@ class Analysis(object):
         self.time_clean = date.today()
         self.size_after_clean = self.get_dir_size()
         self.clean = 1
-        self.update(cursor)
+        self.deep_clean = 1
+        self.update()
 
-    def update(self, cursor):
+    def update(self):
         """
         """
         sql = f"""UPDATE info
@@ -157,8 +160,8 @@ SET time_finish = \"{self.time_finish}\",
     deep_clean = \"{self.deep_clean}\"
 WHERE analysis_id = \"{self.analysis_id}\"
 """
-        cursor.execute(sql)
-        cursor.commit()
+        self.cursor.execute(sql)
+        self.connect.commit()
 
 
 def parse_list_file(file_name):
@@ -168,7 +171,7 @@ def parse_list_file(file_name):
     res = set()
     with open(file_name, 'r') as IN:
         for line in IN:
-            res.add(line.stirp())
+            res.add(line.strip())
     return res
 
 
@@ -291,9 +294,9 @@ def init(input, out):
     logging.info("Insert data to table info...")
     cursor.executemany('INSERT INTO info VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                        project_info)
-    connect.commit()
 
     cursor.close()
+    connect.commit()
     connect.close()
 
 
@@ -335,16 +338,18 @@ def mild(start, end, include, exclude, db, log):
     if include:
         logging.info(f"Parse the include file {include}...")
         include_names = parse_list_file(include)
-        analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if i in include_names}
+        analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if
+                          i in include_names}
     if exclude:
         logging.info(f"Parse the include file {exclude}...")
         exclude_names = parse_list_file(exclude)
-        analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if i not in exclude_names}
+        analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if
+                          i not in exclude_names}
 
     res = []
     for analysis_id, info in analysis_infos.items():
-        obj = Analysis(info)
-        obj.mild(cursor)
+        obj = Analysis(info, connect, cursor)
+        obj.mild()
         res.append(obj)
 
     cursor.close()
@@ -367,8 +372,82 @@ def mild(start, end, include, exclude, db, log):
             print(*tmp, sep='\t', file=OUT)
 
 
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--start',
+              default=date.today() - timedelta(180),
+              show_default=True,
+              help="The start time you want to clean")
+@click.option('--end',
+              default=date.today() - timedelta(90),
+              show_default=True,
+              help="The end time you want to clean")
+@click.option('--include',
+              type=click.Path(),
+              help="The file contain the analysis names will be clean")
+@click.option('--exclude',
+              type=click.Path(),
+              help="The file contain the analysis names should be exclude")
+@click.option('--db',
+              default="/home/renchaobo/db/clean/project.db",
+              show_default=True,
+              type=click.Path(),
+              help="The project database")
+@click.option("--log",
+              required=True,
+              type=click.Path(),
+              help="The mild clean log")
+def deep(start, end, include, exclude, db, log):
+    """
+    Deep clean
+
+    如果提供分析名称文件，则只清理start-end之间，并包含在分析名称文件内的项目
+    """
+    logging.info(f"Connect the database {db}...")
+    connect = sqlite3.connect(db)
+    cursor = connect.cursor()
+
+    analysis_infos = screen_by_time(start, end, cursor)
+    if include:
+        logging.info(f"Parse the include file {include}...")
+        include_names = parse_list_file(include)
+        analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if
+                          i in include_names}
+    if exclude:
+        logging.info(f"Parse the include file {exclude}...")
+        exclude_names = parse_list_file(exclude)
+        analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if
+                          i not in exclude_names}
+
+    res = []
+    for analysis_id, info in analysis_infos.items():
+        obj = Analysis(info, connect, cursor)
+        obj.deep()
+        res.append(obj)
+
+    cursor.close()
+    connect.close()
+
+    header = ["project_id", "analysis_id", "analysis_type", "product_line",
+              "time_finish", "time_clean", "size_before_clean",
+              "size_after_clean", "server_address", "ftp_address", "clean",
+              "deep_clean"]
+    logging.info(f"Out put the clean log...")
+    with open(log, 'w') as OUT:
+        print(*header, sep='\t', file=OUT)
+        for i in res:
+            tmp = [i.project_id, i.analysis_id,
+                   i.analysis_type, i.product_line,
+                   i.time_finish, i.time_clean,
+                   i.size_before_clean, i.size_after_clean,
+                   i.server_address, i.ftp_address,
+                   i.clean, i.deep_clean]
+            print(*tmp, sep='\t', file=OUT)
+
+
+
 cli.add_command(init)
 cli.add_command(mild)
+cli.add_command(deep)
 
 if __name__ == "__main__":
     cli()
