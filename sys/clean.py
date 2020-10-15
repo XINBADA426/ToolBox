@@ -46,7 +46,7 @@ def deep_clean_command(dir_path):
 find {dir_path} -type d \
 -name *.qsub \
 -name *_map \
--delete
+| xargs rm -rf
 find {dir_path} -type f \
 ! -iname "*.py" \
 ! -iname "*.sh" \
@@ -165,6 +165,23 @@ WHERE analysis_id = \"{self.analysis_id}\"
 """
         self.cursor.execute(sql)
         self.connect.commit()
+
+    def is_project_dir(self):
+        """
+        Judget the server dir is project dir or not
+
+        :return:
+        """
+        project_dirs = ["/Bio/Project/PROJECT",
+                        "/state/partition1/WORK/Bio/Project",
+                        "/state/partition1/WORK2/Bio/Project",
+                        "/state/partition1/WORK3/Bio/Project",
+                        "/public/Bio/Project",
+                        "/public2/Bio/Project"]
+        for i in project_dirs:
+            if self.server_address.startswith(i):
+                return 1
+        return 0
 
 
 def parse_list_file(file_name):
@@ -353,30 +370,30 @@ def mild(start, end, include, exclude, db, force, log):
         analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if
                           i not in exclude_names}
 
-    res = []
-    for analysis_id, info in analysis_infos.items():
-        obj = Analysis(info, connect, cursor, force=force)
-        obj.mild()
-        res.append(obj)
-
-    cursor.close()
-    connect.close()
-
     header = ["project_id", "analysis_id", "analysis_type", "product_line",
               "time_finish", "time_clean", "size_before_clean",
               "size_after_clean", "server_address", "ftp_address", "clean",
               "deep_clean"]
-    logging.info(f"Out put the clean log...")
     with open(log, 'w') as OUT:
         print(*header, sep='\t', file=OUT)
-        for i in res:
-            tmp = [i.project_id, i.analysis_id,
-                   i.analysis_type, i.product_line,
-                   i.time_finish, i.time_clean,
-                   i.size_before_clean, i.size_after_clean,
-                   i.server_address, i.ftp_address,
-                   i.clean, i.deep_clean]
-            print(*tmp, sep='\t', file=OUT)
+        for analysis_id, info in analysis_infos.items():
+            obj = Analysis(info, connect, cursor, force=force)
+            logging.info(
+                f"Deal with {obj.analysis_id}: {obj.server_address}...")
+            if obj.is_project_dir():
+                obj.deep()
+                tmp = [obj.project_id, obj.analysis_id,
+                       obj.analysis_type, obj.product_line,
+                       obj.time_finish, obj.time_clean,
+                       obj.size_before_clean, obj.size_after_clean,
+                       obj.server_address, obj.ftp_address,
+                       obj.clean, obj.deep_clean]
+                print(*tmp, sep='\t', file=OUT)
+            else:
+                logging.warning(f"{obj.server_address} is not a project dir")
+
+    cursor.close()
+    connect.close()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -429,30 +446,30 @@ def deep(start, end, include, exclude, db, force, log):
         analysis_infos = {i: analysis_infos[i] for i in analysis_infos.keys() if
                           i not in exclude_names}
 
-    res = []
-    for analysis_id, info in analysis_infos.items():
-        obj = Analysis(info, connect, cursor, force=force)
-        obj.deep()
-        res.append(obj)
-
-    cursor.close()
-    connect.close()
-
     header = ["project_id", "analysis_id", "analysis_type", "product_line",
               "time_finish", "time_clean", "size_before_clean",
               "size_after_clean", "server_address", "ftp_address", "clean",
               "deep_clean"]
-    logging.info(f"Out put the clean log...")
     with open(log, 'w') as OUT:
         print(*header, sep='\t', file=OUT)
-        for i in res:
-            tmp = [i.project_id, i.analysis_id,
-                   i.analysis_type, i.product_line,
-                   i.time_finish, i.time_clean,
-                   i.size_before_clean, i.size_after_clean,
-                   i.server_address, i.ftp_address,
-                   i.clean, i.deep_clean]
-            print(*tmp, sep='\t', file=OUT)
+        for analysis_id, info in analysis_infos.items():
+            obj = Analysis(info, connect, cursor, force=force)
+            logging.info(
+                f"Deal with {obj.analysis_id}: {obj.server_address}...")
+            if obj.is_project_dir():
+                obj.deep()
+                tmp = [obj.project_id, obj.analysis_id,
+                       obj.analysis_type, obj.product_line,
+                       obj.time_finish, obj.time_clean,
+                       obj.size_before_clean, obj.size_after_clean,
+                       obj.server_address, obj.ftp_address,
+                       obj.clean, obj.deep_clean]
+                print(*tmp, sep='\t', file=OUT)
+            else:
+                logging.warning(f"{obj.server_address} is not a project dir")
+
+    cursor.close()
+    connect.close()
 
 
 cli.add_command(init)
