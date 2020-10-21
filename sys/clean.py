@@ -32,7 +32,29 @@ find {dir_path} -type d \
 -delete
 find {dir_path} -type f \
 -iname *clean.sh \
--exec bash {{}}
+-exec bash {{}} \;
+"""
+    return command
+
+
+def mild_srna_command(dir_path):
+    """
+    Mild sRNA project
+
+    :param dir_path:
+    :return:
+    """
+    command = f"""
+find {dir_path} -type d \
+-name *.qsub \
+-name *_map \
+-delete
+find {dir_path} -type f \
+-iname smallrna_2_last_clean.sh \
+-exec bash {{}} \;
+find {dir_path} -type f \
+-iname smallrna_8_3_clean.sh \
+-exec bash {{}} \;
 """
     return command
 
@@ -130,7 +152,7 @@ class Analysis(object):
                 elif "iTRAQ" in self.product_line:
                     command = mild_clean_command(self.server_address)
                 elif "sRNA" in self.product_line:
-                    command = mild_clean_command(self.server_address)
+                    command = mild_srna_command(self.server_address)
             subprocess.run(command, shell=True)
 
             self.time_clean = date.today()
