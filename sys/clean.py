@@ -127,6 +127,10 @@ class Analysis(object):
                     command = mild_clean_command(self.server_address)
                 elif "10X" in self.product_line:
                     command = mild_clean_command(self.server_address)
+                elif "iTRAQ" in self.product_line:
+                    command = mild_clean_command(self.server_address)
+                elif "sRNA" in self.product_line:
+                    command = mild_clean_command(self.server_address)
             subprocess.run(command, shell=True)
 
             self.time_clean = date.today()
@@ -381,7 +385,7 @@ def mild(start, end, include, exclude, db, force, log):
             logging.info(
                 f"Deal with {obj.analysis_id}: {obj.server_address}...")
             if obj.is_project_dir():
-                obj.deep()
+                obj.mild()
                 tmp = [obj.project_id, obj.analysis_id,
                        obj.analysis_type, obj.product_line,
                        obj.time_finish, obj.time_clean,
