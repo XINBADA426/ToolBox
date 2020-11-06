@@ -66,3 +66,10 @@ Scripts to do stat analysis
 ## network
 处理网络图的一些脚本
 - `modify4gephisvg.py`：修饰gephi生成的svg图形
+
+## bed
+处理 bed 文件的一些脚本
+- `get_bed_updown.py`: 获取指定bed文件的上下游bed文件
+
+## bs
+处理甲基化项目的一些脚本
