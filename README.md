@@ -73,3 +73,4 @@ Scripts to do stat analysis
 
 ## bs
 处理甲基化项目的一些脚本
+- `region_plot.py`: 绘制上下游甲基化水平等其他此类型图形的脚本
