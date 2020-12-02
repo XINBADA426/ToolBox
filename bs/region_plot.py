@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO,
 __version__ = '1.0.0'
 
 
-def smooth(data):
+def smooth_data(data):
     res = gaussian_filter1d(data, 3)
     return res
 
@@ -49,10 +49,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               show_default=True,
               help="The xnames, html code split by ,")
 @click.option('-w', '--window',
-              default="20",
+              default="40,40,40",
               show_default=True,
-              type=int,
-              help="The window size for a region")
+              help="The window size for each region")
 @click.option('--xlab',
               required=False,
               help="The xlab name for the plot")
@@ -70,19 +69,24 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               default="6,6",
               show_default=True,
               help="The figsize of pic")
+@click.option('--smooth/--no-smooth',
+              default=True,
+              show_default=True,
+              help='Whether smooth the data')
 @click.option("-p", "--prefix",
               default="./res",
               show_default=True,
               help="The out put prefix")
 def cli(input, positions, names, window, xlab, ylab, title, colors, size,
-        prefix):
+        smooth, prefix):
     """
     Script for plot meth level
     """
     logging.info(f"Parse the plot data {input}...")
     df = pd.read_csv(input, sep="\t")
-    logging.info(f"smooth the input...")
-    smooth_df = df.apply(smooth)
+    if smooth:
+        logging.info(f"smooth the input...")
+        df = df.apply(smooth_data)
     col_names = df.columns
 
     if colors:
@@ -97,7 +101,7 @@ def cli(input, positions, names, window, xlab, ylab, title, colors, size,
     figure, ax = plt.subplots(
         figsize=([float(i) for i in size.strip().split(',')]), dpi=300)
 
-    sns.lineplot(data=smooth_df,
+    sns.lineplot(data=df,
                  palette=color_palette,
                  linestyle='-',
                  lw=1.5,
@@ -108,7 +112,8 @@ def cli(input, positions, names, window, xlab, ylab, title, colors, size,
     for i in ax.lines:
         i.set_linestyle("-")
 
-    for i in range(window, df.shape[0], window):
+    for i in window.strip().split(','):
+        i = int(i)
         ax.axvline(x=i, color='black', linestyle='--', linewidth=0.5)
 
     plt.xticks([float(i) for i in positions.strip().split(',')],
