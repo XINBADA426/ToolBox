@@ -55,7 +55,7 @@ def align(pipe):
         db = pipe.dbs["nr"]
         software = pipe.softwares["diamond"]
         if pipe.infos["seqtype"] == "prot":
-            template = "{software} blastp -p 6 -f 100 -d {db} -q {seq} -e 1e-5 -k 20 -o {out};{software} view --daa {out} -f 6 -o {tsv}"
+            template = "{software} blastp -p 6 -f 100 -d {db} -q {seq} -e 1e-5 -k 20 -o {out};{software} view -p 6 --daa {out} -f 6 -o {tsv}"
             for i in range(len(fas)):
                 seq = fas[i]
                 out = os.path.join(align.workdir,
@@ -69,7 +69,7 @@ def align(pipe):
                                     out=out,
                                     tsv=tsv))
         elif pipe.infos["seqtype"] == "nucl":
-            template = "{software} blastx -p 6 -f 100 -d {db} -q {seq} -e 1e-5 -k 20 -o {out};{software} view --daa {out} -f 6 -o {tsv}"
+            template = "{software} blastx -p 6 -f 100 -d {db} -q {seq} -e 1e-5 -k 20 -o {out};{software} view -p 6 --daa {out} -f 6 -o {tsv}"
             for i in range(len(fas)):
                 seq = fas[i]
                 out = os.path.join(align.workdir,
