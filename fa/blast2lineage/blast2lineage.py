@@ -12,7 +12,7 @@ import click
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
-dir_name = os.path.dirname(os.path.abspath(__file__))
+DIRNAME = os.path.dirname(os.path.abspath(__file__))
 # sys.path.append("/Bio/User/renchaobo/PyLibs/EasyPipe/v3.x.x/v3.0.0")
 sys.path.append("/Bio/User/renchaobo/2")
 from EasyPipe import __version__
@@ -111,7 +111,36 @@ def align(pipe):
                                     out=out))
     job.add(align)
 
+    taxon = Job(name="taxon")
+    taxon.set_workdir(f"{pipe.project_dir}/{job.name}/{taxon.name}")
+    taxon.set_run_type("multi_run")
+    taxon.set_maxjob(min(12, pipe.infos["cut"]))
+    taxon.set_jobprefix("taxon")
+    blast_tsvs = [os.path.join(align.workdir, f"{prefix}.{i}{suffix}.tsv")
+                  for i in tags]
+    acc2taxon_tsvs = [os.path.join(taxon.workdir, f"{prefix}.{i}.acc2taxon")
+                      for i in tags]
+    template = "{py} {script} -t {input} -c 1 --db {db} -o {out}"
+    script = os.path.join(pipe.bin, "accession2taxid.py")
+    db = pipe.dbs['nt_acc2taxonid'] if pipe.infos["db"] == "nt" else pipe.dbs[
+        "nr_acc2taxonid"]
+    for i in range(len(blast_tsvs)):
+        cmd = template.format(py=pipe.softwares["py3"],
+                              script=script,
+                              input=blast_tsvs[i],
+                              db=db,
+                              out=acc2taxon_tsvs[i])
+        taxon.add_command(cmd)
+    job.add(taxon)
+
     pipe.add(job)
+
+
+# def lineage(pipe):
+#     job = ComplexJob(name="taxon")
+#     job.set_workdir(f"{pipe.project_dir}/{job.name}")
+#     job.set_prefix("acc2taxon")
+#     template = "{py} {script} {}"
 
 
 ########################
@@ -140,7 +169,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               type=click.Choice(["nr", "nt"]),
               help="Use nr or nt database")
 @click.option('--config',
-              default=os.path.join(dir_name, "blast2lineage.ini"),
+              default=os.path.join(DIRNAME, "blast2lineage.ini"),
               show_default=True,
               help="The config file to use")
 @click.option('--out',
@@ -167,7 +196,7 @@ def cli(fasta, cut, seqtype, database, config, out):
         project.add_software(software, cfg.get("software", software))
     for db in cfg.options("db"):
         project.add_db(db, cfg.get("db", db))
-    project.set_bin(os.path.join(os.path.abspath(__file__), "bin"))
+    project.set_bin(os.path.join(DIRNAME, "bin"))
     project.add_info("seqtype", seqtype)
     project.add_info("db", database)
     project.add_info("cut", cut)
