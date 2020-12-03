@@ -134,16 +134,32 @@ def align(pipe):
     job.add(taxon)
 
     merge = Job(name="merge")
+    acc2taxon_all = os.path.join(taxon.workdir, f"all.acc2taxon.tsv")
+    cmd = f"cat {' '.join(acc2taxon_tsvs)} > {acc2taxon_all}"
+    merge.add_command(cmd)
 
+    job.add(merge)
 
+    lineage = Job(name="lineage")
+    taxon2lineage = os.path.join(taxon.workdir, f"taxon2lineage.tsv")
+    template = "cut -f 3 {input}|sort -u |{taxonkit} lineage --data-dir {taxdump} |{taxonkit} reformat --data-dir {taxdump} |cut -f 1,3 > {out}"
+    lineage.add_command(template.format(input=acc2taxon_all,
+                                        taxonkit=pipe.softwares["taxonkit"],
+                                        taxdump=pipe.dbs["taxdump"],
+                                        out=taxon2lineage))
+    job.add(lineage)
+
+    result = Job(name="final")
+    res = os.path.join(taxon.workdir, 'result.tsv')
+    template = "{py} {script} -i {file_in} --lineage {lineage} -o {out}"
+    result.add_command(template.format(py=pipe.softwares["py3"],
+                                       script=os.path.join(pipe.bin,
+                                                           "generate_result.py"),
+                                       file_in=acc2taxon_all,
+                                       lineage=taxon2lineage,
+                                       out=res))
+    job.add(result)
     pipe.add(job)
-
-
-# def lineage(pipe):
-#     job = ComplexJob(name="taxon")
-#     job.set_workdir(f"{pipe.project_dir}/{job.name}")
-#     job.set_prefix("acc2taxon")
-#     template = "{py} {script} {}"
 
 
 ########################
