@@ -89,7 +89,7 @@ def cli(table, column, db, header, out):
                 accession = arr[column].strip().split('.')[0]
                 taxonid = query_accession(accession, cursor)
                 if taxonid:
-                    print(*[query, taxonid], sep='\t', file=OUT)
+                    print(*[query, arr[column], taxonid], sep='\t', file=OUT)
                     pool.add(query)
     logging.info(f"Finish. the output file is {out}")
 

@@ -133,6 +133,9 @@ def align(pipe):
         taxon.add_command(cmd)
     job.add(taxon)
 
+    merge = Job(name="merge")
+
+
     pipe.add(job)
 
 
