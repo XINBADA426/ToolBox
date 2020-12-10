@@ -4,7 +4,13 @@
 # @Date:   2019-12-24 09:47:58
 # @Last Modified by:   Ming
 # @Last Modified time: 2020-01-11 09:55:22
+import logging
+
 import click
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+__version__ = '1.0.0'
 
 
 #### Some Functions ####
@@ -38,6 +44,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
+@click.version_option(version=__version__)
 def cli():
     """
     Tools for deal with table by columns
@@ -68,7 +75,9 @@ def rename(table, map_file, keep, out):
     the order of column will be the original order in the
     table.
     """
+    logging.info(f"Parse the map file {map_file}")
     map_info = parse_table(map_file)
+    logging.info(f"Deal with the file {table}")
     with open(table, 'r') as IN, open(out, 'w') as OUT:
         header = next(IN).strip().split('\t')
         if keep:
@@ -85,8 +94,8 @@ def rename(table, map_file, keep, out):
             new_header = []
             order_list = []
             for i in range(len(header)):
-                if header[i] in map_file:
-                    new_header.append(map_file[header[i]])
+                if header[i] in map_info:
+                    new_header.append(map_info[header[i]])
                     order_list.append(i)
             print(*new_header, sep='\t', file=OUT)
             for line in IN:
