@@ -16,6 +16,45 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 __version__ = '1.0.0'
 
+LAYOUT = ["auto", "circle", "drl", "fruchterman_reingold",
+          "grid_fruchterman_reingold", "kamada_kawai", "lgl",
+          "random", "reingold_tilford", "reingold_tilford_circular"]
+
+
+def get_layout(graph, layout):
+    """
+    Get the layout obj
+
+    :param graph: The igraph obj
+    :param layout: The layout to apply
+    :return:
+    """
+    if layout == "auto":
+        res = graph.layout_auto()
+    elif layout == "circle":
+        res = graph.layout_circle()
+    elif layout == "drl":
+        res = graph.layout_drl()
+    elif layout == "fruchterman_reingold":
+        res = graph.layout_fruchterman_reingold()
+    elif layout == "grid_fruchterman_reingold":
+        res = graph.layout_grid_fruchterman_reingold()
+    elif layout == "kamada_kawai":
+        res = graph.layout_kamada_kawai()
+    elif layout == "lgl":
+        res = graph.layout_lgl()
+    elif layout == "random":
+        res = graph.layout_random()
+    elif layout == "random_3d":
+        res = graph.layout_random_3d()
+    elif layout == "reingold_tilford":
+        res = graph.layout_reingold_tilford()
+    elif layout == "reingold_tilford_circular":
+        res = graph.layout_reingold_tilford_circular()
+
+    return res
+
+
 ########################
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -30,11 +69,16 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               required=True,
               type=click.Path(),
               help="The edge file")
+@click.option('-l', '--layout',
+              metavar="[auto | circle | drl | ...]",
+              default="auto",
+              type=click.Choice(LAYOUT),
+              help=f"The layout to apply, you can choose from {LAYOUT}")
 @click.option('-p', '--prefix',
               default="./result",
               show_default=True,
               help="The prefix of result")
-def cli(node, edge, prefix):
+def cli(node, edge, layout, prefix):
     """
     Use igraph to plot network
 
@@ -42,9 +86,8 @@ def cli(node, edge, prefix):
     The edge file first second col must be Source Target
 
     TODO
-    1. 添加布局方式
-    2. 添加颜色支持
-    3. 添加多种形状支持
+    - 添加颜色支持
+    - 添加多种形状支持
     """
     g = igraph.Graph()
     df_node = pd.read_csv(node, sep='\t')
@@ -55,8 +98,8 @@ def cli(node, edge, prefix):
     g.add_edges(zip(df_edge["Source"], df_edge["Target"]))
 
     visual_style = {}
-    # visual_style["layout"] = g.layout_auto()
-    visual_style["layout"] = g.layout("fr")
+    logging.info(f"Apply layout {layout}")
+    visual_style["layout"] = get_layout(g, layout)
     visual_style["vertex_color"] = "#779988"
     visual_style["vertex_frame_width"] = 0
     visual_style["vertex_label"] = df_node["Symbol"]
