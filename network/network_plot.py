@@ -74,50 +74,85 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               default="auto",
               type=click.Choice(LAYOUT),
               help=f"The layout to apply, you can choose from {LAYOUT}")
+@click.option("--label",
+              default="Id",
+              show_default=True,
+              help="The label column name in node file")
+@click.option('-nc', '--nodecolor',
+              default="red",
+              show_default=True,
+              help="The node color")
+@click.option('-ns', '--nodeshape',
+              default="circle",
+              show_default=True,
+              help="The node shape")
+@click.option('-ec', '--edgecolor',
+              default="grey",
+              show_default=True,
+              help="The edge color")
+@click.option('-ew', '--edgewidth',
+              default=0.1,
+              show_default=True,
+              type=float,
+              help="The edge width")
 @click.option('-p', '--prefix',
               default="./result",
               show_default=True,
               help="The prefix of result")
-def cli(node, edge, layout, prefix):
+def cli(node, edge, layout, label, nodecolor, nodeshape, edgecolor, edgewidth,
+        prefix):
     """
     Use igraph to plot network
 
     The node file first col must be Id\n
     The edge file first second col must be Source Target
 
-    TODO
-    - 添加颜色支持
-    - 添加多种形状支持
+    if file node have column named color, it will be regard as node color
+    if file node have column named shape, it will be regard as node shape
+    if file edge have column named color, it will be regard as edge color
     """
     g = igraph.Graph()
     df_node = pd.read_csv(node, sep='\t')
     df_edge = pd.read_csv(edge, sep='\t')
-    logging.info(f"Add nodes")
+    logging.info("Add nodes")
     g.add_vertices(df_node["Id"])
-    logging.info(f"Add edges")
+    logging.info("Add edges")
     g.add_edges(zip(df_edge["Source"], df_edge["Target"]))
+    logging.info(f"Node number {g.vcount()}")
+    logging.info(f"Edge number {g.ecount()}")
 
     visual_style = {}
     logging.info(f"Apply layout {layout}")
     visual_style["layout"] = get_layout(g, layout)
-    visual_style["vertex_color"] = "#779988"
+    if "shape" in df_node.columns:
+        visual_style["vertex_shape"] = df_node["shape"]
+    else:
+        visual_style["vertex_shape"] = nodeshape
+    if "color" in df_node.columns:
+        visual_style["vertex_color"] = df_node["color"]
+    else:
+        visual_style["vertex_color"] = nodecolor
     visual_style["vertex_frame_width"] = 0
-    visual_style["vertex_label"] = df_node["Symbol"]
+    if label:
+        visual_style["vertex_label"] = df_node[label]
     pagerank = np.array(g.pagerank())
     visual_style["vertex_label_size"] = 20 * (pagerank - min(pagerank)) / (
             max(pagerank) - min(pagerank)) + 1
-    visual_style["vertex_size"] = 50 * (pagerank - min(pagerank)) / (
+    visual_style["vertex_size"] = 100 * (pagerank - min(pagerank)) / (
             max(pagerank) - min(pagerank)) + 1
 
-    visual_style["edge_color"] = "#99aabb"
+    if "color" in df_edge.columns:
+        visual_style["edge_color"] = df_edge["color"]
+    else:
+        visual_style["edge_color"] = edgecolor
     visual_style["edge_curved"] = 0.5
-    visual_style["edge_width"] = 0.1
+    visual_style["edge_width"] = edgewidth
 
     logging.info(f"Out put the graph")
     file_pdf = f"{prefix}.pdf"
     igraph.plot(g, file_pdf,
-                bbox=(600, 600),
-                margin=10,
+                bbox=(3000, 3000),
+                margin=50,
                 **visual_style)
 
 
