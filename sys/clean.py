@@ -248,6 +248,10 @@ def parse_project_table(file_name):
             time_clean = 'NA'
             size_before_clean = "NA"
             size_after_clean = "NA"
+            if len(arr) < 22:
+                logging.warning(
+                    f"Can't get the server path for {analysis_id}")
+                continue
             server_address = arr[20] if arr[20] else "NA"
             ftp_address = "NA" if len(arr) < 22 else arr[21]
             clean = 0
@@ -284,6 +288,18 @@ def screen_by_time(start, end, cursor):
     else:
         res = {}
     return res
+
+
+def query_analysis_id(name, cursor):
+    sql = f"""SELECT * FROM info
+WHERE analysis_id == \"{name}\"
+"""
+    cursor.execute(sql)
+    info = cursor.fetchone()
+    if info:
+        return True
+    else:
+        return False
 
 
 ########################
@@ -341,6 +357,37 @@ def init(input, out):
     cursor.executemany('INSERT INTO info VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                        project_info)
 
+    cursor.close()
+    connect.commit()
+    connect.close()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input',
+              required=True,
+              type=click.Path(),
+              help="The input file genenate by get_my_plan.py")
+@click.option('-d', '--db',
+              default="/home/renchaobo/db/clean/project.db",
+              show_default=True,
+              type=click.Path(),
+              help="The sqlite3 database that contain project info")
+def update(input, db):
+    """
+    Update the sqlite3 database that contain the project info
+    """
+    logging.info(f"Read the info from file {input}")
+    project_info = parse_project_table(input)
+    logging.info(f"Connect the database {db}")
+    connect = sqlite3.connect(db)
+    cursor = connect.cursor()
+    logging.info("Update the database")
+    for i in project_info:
+        if not query_analysis_id(i[1], cursor):
+            cursor.execute('INSERT INTO info VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+                           i)
+        else:
+            logging.info(f"{i[1]} exists in db")
     cursor.close()
     connect.commit()
     connect.close()
@@ -499,6 +546,7 @@ def deep(start, end, include, exclude, db, force, log):
 
 
 cli.add_command(init)
+cli.add_command(update)
 cli.add_command(mild)
 cli.add_command(deep)
 
